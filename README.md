@@ -20,6 +20,6 @@ This repository contains python code using Theano to reproduce the experiments f
 3. Set the python path using `export PYTHONPATH="/path/to/nn-discrete"` and change directory using `cd /path/to/nn-discrete`
 4. Run the experiments (replace `<dataset>` with one of `mnist/mnist_pi/cifar10/cifar100/svhn`). Please note that you have to set the `$THEANO_FLAGS` environment variable according to your system.
     1. To train a model with real weights and tanh activation function run `python experiments/<dataset>/experiment_<dataset>_real.py`. The resulting model will be used as initial model for the discrete-valued models.
-    2. To train a model with ternary weights and sign activation function run `python experiments/<dataset>/experiment_<dataset>_sign.py`. Requires that i. has finished first.
-    3. To train a model with ternary weights and tanh activation function run `python experiments/<dataset>/experiment_<dataset>_tanh.py`. Requires that i. has finished first.
-    4. To train a model with ternary weights and sign activation function initialized with the model using ternary weights and tanh activation run `python experiments/<dataset>/experiment_<dataset>_sign_from_tanh.py`. Requires that iii. has finished first.
+    2. To train a model with ternary weights and sign activation function run `python experiments/<dataset>/experiment_<dataset>_ternary_sign.py`. Requires that i. has finished first.
+    3. To train a model with ternary weights and tanh activation function run `python experiments/<dataset>/experiment_<dataset>_ternary_tanh.py`. Requires that i. has finished first.
+    4. To train a model with ternary weights and sign activation function initialized with the model using ternary weights and tanh activation run `python experiments/<dataset>/experiment_<dataset>_ternary_sign_from_tanh.py`. Requires that iii. has finished first.

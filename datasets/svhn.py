@@ -73,9 +73,6 @@ def downloadSvhn(filename, remove_tmp_files=True):
         remove(tmp_train_extra)
         remove(tmp_test)
 
-    print x_tr.shape, x_va.shape, x_te.shape
-    print t_tr.shape, t_va.shape, t_te.shape
-
     print 'Storing SVHN data to ''%s''' % (filename)
     np.savez_compressed(filename,
                         x_tr=x_tr, t_tr=t_tr,
