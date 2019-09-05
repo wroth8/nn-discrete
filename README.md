@@ -14,11 +14,11 @@ This repository contains python code to reproduce the experiments from our paper
 ## Usage
 
 1. Clone this repository: `git clone https://github.com/wroth8/nn-discrete.git`
-2. Create a virtual environment from the included environment.yml and activate it. (Note: We observed that the code does not run with the newer numpy version 1.16)
-    1. Create using conda: `conda env create -f environment.yml`.
+2. Create a virtual environment from the included environment.yml and activate it. Please note that we observed that the code does not run with the newer numpy version 1.16.
+    1. Create using conda: `conda env create -f environment.yml`
     2. Activate using conda: `conda activate nn-discrete-ecml19`
 3. Set the python path using `export PYTHONPATH="/path/to/nn-discrete"` and change directory using `cd /path/to/nn-discrete`
-4. Run the experiments
+4. Run the experiments (replace <dataset> with one of mnist/mnist_pi/cifar10/cifar100/svhn). Please note that you have to set the $THEANO_FLAGS environment variable according to your system.
     1. To train a model with real weights and tanh activation function run `python experiments/<dataset>/experiment_<dataset>_real.py`. The resulting model will be used as initial model for the discrete-valued models.
     2. To train a model with ternary weights and sign activation functions run `python experiments/<dataset>/experiment_<dataset>_sign.py`. Requires that i. has finished first.
     3. To train a model with ternary weights and tanh activation functions run `python experiments/<dataset>/experiment_<dataset>_tanh.py`. Requires that i. has finished first.
