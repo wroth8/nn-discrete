@@ -1,5 +1,5 @@
 '''
-Fully-connected weight layer.
+Performs the local reparameterization trick.
 '''
 
 from abc import abstractmethod

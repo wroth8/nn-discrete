@@ -1,3 +1,7 @@
+'''
+Super-class for linear layers (fully-connected and convolutional layers).
+Implements initialization and parameterization of weights.
+'''
 
 from Layer import Layer
 
@@ -273,19 +277,7 @@ class LayerLinearForward(Layer):
                 # Method based on matching the expectation of the distribution
                 # with given real values.
                 # see O. Shayer et al.; Learning Discrete Weights Using the Local Reparameterization Trick; ICLR 2018
-                
-                # Note:
-                # In experiments it appears that Shayer initialization with W_values \sim N(0,1) work best
-                # Some form of normalization (activation normalization / BatchNorm) is required for ternary weights to converge (at least for ReLU)
-         
-                # Experimental:
-                # Does not seem to work as well as just using zero-mean unit-variance Gaussian if BatchNorm is used
-                # Does not work at all if no BatchNorm is used
-                # Hence, we better use it.
-                #n_in = self._W_shape[0] + (1. if self._enable_bias else 0.)
-                #scale = (2. / n_in) ** 0.5
-                #W_values = rng.normal(0., scale, size=shape)
-                
+
                 # The following initialization method assumes that w_discrete_values[1]==0.
                 p_init_min, p_init_max = 0.05, 0.95
 
@@ -299,15 +291,6 @@ class LayerLinearForward(Layer):
                 pA_values = np.clip(pA_values, p_init_min, p_init_max)
                 pB_values = np.clip(pB_values, p_init_min, p_init_max)
 
-#                 # OLD
-#                 pA_values_old = p_init_max - (p_init_max - p_init_min) * np.abs(W_values)
-#                 pB_values_old = (W_values / (1. - pA_values_old) - w_discrete_values[0]) / (-w_discrete_values[0] + w_discrete_values[2])
-#                 pA_values_old = np.clip(pA_values_old, p_init_min, p_init_max)
-#                 pB_values_old = np.clip(pB_values_old, p_init_min, p_init_max)
-#                 
-#                 print 'Debug TERNARY: pA_values discrepancy:', np.max(np.abs(pA_values - pA_values_old))
-#                 print 'Debug TERNARY: pB_values discrepancy:', np.max(np.abs(pB_values - pB_values_old))
-                
                 if parameterization in ['logits', 'logits_fixedzero']:
                     p_zr_values = pA_values
                     p_p1_values = (1. - pA_values) * pB_values
@@ -350,39 +333,7 @@ class LayerLinearForward(Layer):
                 p_p1_values[idx0] = p_init_max
                 p_p1_values[idx1] = p_init_min / 2.
                 p_p1_values[idx2] = p_init_min / 2. + slope[1] * (W_values[idx2] - w_discrete_values[1])
-                
-                ################# OLD
-#                 # Compute probabilities p(w = -1)
-#                 idx0 = W_values <= -1
-#                 idx1 = W_values > 0.
-#                 idx2 = np.logical_and(W_values > -1, W_values <= 0.)
-#                 p_m1_values_old = np.zeros(W_values.shape)
-#                 p_m1_values_old[idx0] = p_init_max
-#                 p_m1_values_old[idx1] = p_init_min / 2.
-#                 p_m1_values_old[idx2] = p_init_max - slope[0] * (W_values[idx2] + 1.)
-#                 
-#                 # Compute probabilities p(w = 0)
-#                 idx0 = np.logical_or(W_values <= -1, W_values > 1)
-#                 idx1 = np.logical_and(W_values > -1, W_values <= 0)
-#                 idx2 = np.logical_and(W_values > 0., W_values <= 1.)
-#                 p_zr_values_old = np.zeros(W_values.shape)
-#                 p_zr_values_old[idx0] = p_init_min / 2.
-#                 p_zr_values_old[idx1] = p_init_min / 2. + slope[0] * (W_values[idx1] + 1.)
-#                 p_zr_values_old[idx2] = p_init_max - slope[1] * W_values[idx2]
-#                 
-#                 # Compute probabilities p(w = 1)
-#                 idx0 = W_values > 1.
-#                 idx1 = W_values <= 0.
-#                 idx2 = np.logical_and(W_values > 0., W_values <= 1.)
-#                 p_p1_values_old = np.zeros(W_values.shape)
-#                 p_p1_values_old[idx0] = p_init_max
-#                 p_p1_values_old[idx1] = p_init_min / 2.
-#                 p_p1_values_old[idx2] = p_init_min / 2. + slope[1] * W_values[idx2]
-                
-#                 print 'Debug TERNARY weights: old-new discrepancy pM1:', np.max(np.abs(p_m1_values_old - p_m1_values))
-#                 print 'Debug TERNARY weights: old-new discrepancy pZR:', np.max(np.abs(p_zr_values_old - p_zr_values))
-#                 print 'Debug TERNARY weights: old-new discrepancy pP1:', np.max(np.abs(p_p1_values_old - p_p1_values))
-                
+
                 if parameterization == 'shayer':
                     pA_values = p_zr_values
                     pB_values = (p_p1_values) / (1. - p_zr_values)
@@ -410,31 +361,6 @@ class LayerLinearForward(Layer):
             else:
                 assert False
 
-#             # TODO: Maybe we can use the following code at some point the future
-#             # Essentially the probabilities are comuted first, and then we match the weights to fit the expectation
-#             if enable_scale_factors:
-#                 assert False # Implement
-#                 if initial_parameters is not None and 'scale_factor' not in initial_parameters:
-#                     # TODO: Check if we can safely assume that all values we are accessing in this block are indeed available
-#                     print 'Do some nice initializiation of scale factors'
-#                     scale_factor_rho_values = np.full((2,), np.log(np.exp(1.) - 1.), theano.config.floatX)
-#                     pp = (1. - pA_values) * pB_values
-#                     pm = (1. - pA_values) * (1. - pB_values)
-#                     A = np.stack([-pm.flatten(), pp.flatten()], axis=-1)
-#                     b = W_values.flatten()
-#                     print 'A.shape', A.shape
-#                     print 'b.shape', b.shape
-#                     sf = np.linalg.lstsq(A, b)
-#                     print sf
-#                     print np.sum((np.dot(A, np.asarray([1., 1.])) - b) ** 2.)
-#                     print np.sum((np.dot(A, sf[0]) - b) ** 2.)
-#                     print 'W_values percentiles:', [np.percentile(W_values, p) for p in [10,20,30,40,50,60,70,80,90]]
-#                     scale_factor_rho_values = np.log(np.exp(sf[0]) - 1.)
-#                 elif initial_parameters is None or 'scale_factor' not in initial_parameters:
-#                     # Use softplus^{-1}(1) as initial values
-#                     scale_factor_rho_values = np.full((2,), np.log(np.exp(1.) - 1.), theano.config.floatX)
-#                 else:
-#                     scale_factor_rho_values = LayerLinearForward._assignParameters(initial_parameters, 'scale_factor', (2,))
         else:
             if parameterization == 'shayer':
                 W_rhoA_values = LayerLinearForward._assignParameters(initial_parameters, param_name_rhoA, shape)
@@ -836,29 +762,8 @@ class LayerLinearForward(Layer):
                 assert False
         elif regularizer == 'kl':
             assert False # TODO: Implement
-            #assert regularizer_parameters is not None
-            #assert regularizer_weight is not None
-            #assert len(regularizer_parameters) in [3,5]
-            #if len(regularizer_parameters) == 3:
-            #    prior_p = np.asarray([regularizer_parameters[2],
-            #                          regularizer_parameters[1],
-            #                          regularizer_parameters[0],
-            #                          regularizer_parameters[1],
-            #                          regularizer_parameters[2]], 'float64')
-            #elif len(regularizer_parameters) == 5:
-            #    prior_p = np.asarray([regularizer_parameters], 'float64')
-            #assert np.abs(np.sum(prior_p) - 1) <= 1e-6
-            #log_prior_p = np.log(prior_p).astype(theano.config.floatX)
-            #cost_regularizer = T.sum(W_p * (T.log(W_p) - log_prior_p)) * regularizer_weight
         elif regularizer == 'kl_gaussprior': # discretized gaussian prior
             assert False # TODO: Implement
-            #assert regularizer_parameters is not None
-            #assert regularizer_weight is not None
-            #log_prior_p = -0.5 * np.asarray([-1, -0.5, 0., 0.5, 1.]) / regularizer_parameters
-            #log_prior_p = log_prior_p - np.max(log_prior_p)
-            #log_prior_p = log_prior_p - np.log(np.sum(np.exp(log_prior_p)))
-            #log_prior_p = log_prior_p.astype(theano.config.floatX)
-            #cost_regularizer = T.sum(W_p * (T.log(W_p) - log_prior_p)) * regularizer_weight
         elif regularizer is None:
             cost_regularizer = 0
         else:
@@ -1008,28 +913,6 @@ class LayerLinearForward(Layer):
                 pD_values_aux = ((W_values / (1. - pA_values) - 0.5 * pB_values * (w_discrete_values[4] + w_discrete_values[3])) / (1. - pB_values) - w_discrete_values[1]) / (w_discrete_values[0] - w_discrete_values[1])
                 pD_values[pB_values == p_init_min] = pD_values_aux[pB_values == p_init_min]
                 pD_values = np.clip(pD_values, p_init_min, p_init_max)
-    
-#                 # OLD:
-#                 pA_values_old = p_init_max - (p_init_max - p_init_min) * np.abs(W_values)
-#                 pA_values_old = np.clip(pA_values_old, p_init_min, p_init_max)
-#                   
-#                 pB_values_old = 0.5 * (1. + W_values / (1 - pA_values_old) / 0.75)
-#                 pB_values_old = np.clip(pB_values_old, p_init_min, p_init_max)
-#                   
-#                 pC_values_old = np.full(pA_values_old.shape, 0.5)
-#                 pC_values_aux = (2. * W_values / (1. - pA_values_old) + (1. - pB_values_old) * 1.5) / pB_values_old - 1.
-#                 pC_values_old[pB_values_old == p_init_max] = pC_values_aux[pB_values_old == p_init_max]
-#                 pC_values_old = np.clip(pC_values_old, p_init_min, p_init_max)
-#  
-#                 pD_values_old = np.full(pA_values_old.shape, 0.5)
-#                 pD_values_aux = (2. * W_values / (1. - pA_values_old) - pB_values_old * 1.5) / (pB_values_old - 1.) - 1.
-#                 pD_values_old[pB_values_old == p_init_min] = pD_values_aux[pB_values_old == p_init_min]
-#                 pD_values_old = np.clip(pD_values_old, p_init_min, p_init_max)
-#                  
-#                 print 'Debug QUINARY: pA_values discrepancy:', np.max(np.abs(pA_values - pA_values_old))
-#                 print 'Debug QUINARY: pB_values discrepancy:', np.max(np.abs(pB_values - pB_values_old))
-#                 print 'Debug QUINARY: pC_values discrepancy:', np.max(np.abs(pC_values - pC_values_old))
-#                 print 'Debug QUINARY: pD_values discrepancy:', np.max(np.abs(pD_values - pD_values_old))
                 
                 if parameterization in ['logits', 'logits_fixedzero']:
                     p_zr_values = pA_values
@@ -1098,55 +981,6 @@ class LayerLinearForward(Layer):
                 p_p1_values[idx1] = p_init_min / 4.
                 p_p1_values[idx2] = p_init_min / 4. + slope[3] * (W_values[idx2] - w_discrete_values[3])
 
-                # TODO: Check if the old implementation for p-values-init works better with scale factors
-#                 #######################################################
-#                 # OLD Implementation
-#                 slope = (p_init_max - p_init_min / 4.) / 0.5;
-#                 # Compute probabilities p(w = -1)
-#                 idx0 = W_values <= -1
-#                 idx1 = W_values > -0.5
-#                 idx2 = np.logical_and(W_values > -1, W_values <= -0.5)
-#                 p_m1_values = np.zeros(W_values.shape)
-#                 p_m1_values[idx0] = p_init_max
-#                 p_m1_values[idx1] = p_init_min / 4.
-#                 p_m1_values[idx2] = p_init_max - slope * (W_values[idx2] + 1.)
-#                  
-#                 # Compute probabilities p(w = -0.5)
-#                 idx0 = np.logical_or(W_values <= -1, W_values > 0.)
-#                 idx1 = np.logical_and(W_values > -1, W_values <= -0.5)
-#                 idx2 = np.logical_and(W_values > -0.5, W_values <= 0.)
-#                 p_m05_values = np.zeros(W_values.shape)
-#                 p_m05_values[idx0] = p_init_min / 4.
-#                 p_m05_values[idx1] = p_init_min / 4. + slope * (W_values[idx1] + 1.)
-#                 p_m05_values[idx2] = p_init_max - slope * (W_values[idx2] + 0.5)
-#                  
-#                 # Compute probabilities p(w = 0)
-#                 idx0 = np.logical_or(W_values <= -0.5, W_values > 0.5)
-#                 idx1 = np.logical_and(W_values > -0.5, W_values <= 0)
-#                 idx2 = np.logical_and(W_values > 0., W_values <= 0.5)
-#                 p_zr_values = np.zeros(W_values.shape)
-#                 p_zr_values[idx0] = p_init_min / 4.
-#                 p_zr_values[idx1] = p_init_min / 4. + slope * (W_values[idx1] + 0.5)
-#                 p_zr_values[idx2] = p_init_max - slope * W_values[idx2]
-#                  
-#                 # Compute probabilities p(w = 0.5)
-#                 idx0 = np.logical_or(W_values <= 0., W_values > 1.)
-#                 idx1 = np.logical_and(W_values > 0., W_values <= 0.5)
-#                 idx2 = np.logical_and(W_values > 0.5, W_values <= 1.)
-#                 p_p05_values = np.zeros(W_values.shape)
-#                 p_p05_values[idx0] = p_init_min / 4.
-#                 p_p05_values[idx1] = p_init_min / 4. + slope * W_values[idx1]
-#                 p_p05_values[idx2] = p_init_max - slope * (W_values[idx2] - 0.5)
-#                  
-#                 # Compute probabilities p(w = 1)
-#                 idx0 = W_values > 1.
-#                 idx1 = W_values <= 0.5
-#                 idx2 = np.logical_and(W_values > 0.5, W_values <= 1.)
-#                 p_p1_values = np.zeros(W_values.shape)
-#                 p_p1_values[idx0] = p_init_max
-#                 p_p1_values[idx1] = p_init_min / 4.
-#                 p_p1_values[idx2] = p_init_min / 4. + slope * (W_values[idx2] - 0.5)
-                
                 if parameterization == 'shayer':
                     pA_values = p_zr_values
                     pB_values = (p_p1_values + p_p05_values) / (1. - p_zr_values)
@@ -1194,52 +1028,6 @@ class LayerLinearForward(Layer):
                 else:
                     scale_factor_rho_values = np.full((4,), np.log(np.exp(0.5) - 1.), theano.config.floatX)
 
-#         if enable_scale_factors:
-#             assert False #
-#             # Idea: Use k-means
-#             # Should we constrain the scale factors, i.e., should we put non-negativity constraints on them?
-#             
-#             # TODO: Implement this stuff here
-#             if initial_parameters is not None and 'scale_factor' not in initial_parameters:
-#                 # TODO: Check if we can safely assume that the variables P{A,B,C,D}_values are defined at this point
-#                 scale_factor_rho_values = np.full((4,), np.log(np.exp(0.5) - 1.), theano.config.floatX)
-#                 p_m1 = (1. - pA_values) * (1. - pB_values) * pD_values
-#                 p_m05 = (1. - pA_values) * (1. - pB_values) * (1. - pD_values)
-#                 p_p05 = (1. - pA_values) * pB_values * (1. - pC_values)
-#                 p_p1 = (1. - pA_values) * pB_values * pC_values
-#                 
-# #                 pm = (1. - p0_values) * (1. - p1_values)
-#                 A = np.stack([-p_m1.flatten(), -p_m05.flatten(), p_p05.flatten(), p_p1.flatten()], axis=-1)
-#                 b = W_values.flatten()
-#                 print 'A.shape', A.shape
-#                 print 'b.shape', b.shape
-# 
-#                 opt_res = lsq_linear(A, b, (0.1, np.inf))
-#                 #opt_res = lsq_linear(A, b, ([0.55, 0.49, 0.49, 0.55], [np.inf, 0.51, 0.51, np.inf]))
-#                 print opt_res['message']
-#                 sf = opt_res['x'].astype(theano.config.floatX)
-#                 print 'Scale Factor initialization debug output:'
-#                 print sf
-#                 print np.sum((np.dot(A, np.asarray([1., 0.5, 0.5, 1])) - b) ** 2.)
-#                 print np.sum((np.dot(A, sf) - b) ** 2.)
-#                 print 'W_values percentiles:', [np.percentile(W_values, p) for p in [10,20,30,40,50,60,70,80,90]]
-#                 
-#                 # scale factor for smallest weight is computed as -sf[0] - sf[1]
-#                 sf[0] = sf[0] - sf[1]
-#                 # scale factor for largest weight is computed as sf[2] + sf[3]
-#                 sf[3] = sf[3] - sf[2]
-#                 scale_factor_rho_values = np.log(np.exp(sf) - 1.)
-#             elif initial_parameters is None or 'scale_factor' not in initial_parameters:
-# #                 # Use softplus^{-1}(1) as initial values
-#                 scale_factor_rho_values = np.full((4,), np.log(np.exp(0.5) - 1.), theano.config.floatX)
-#             else:
-#                 scale_factor_rho_values = LayerLinearForward._assignParameters(initial_parameters, 'scale_factor', (4,))
-#             scale_factor_rho = theano.shared(scale_factor_rho_values, 'scale_factor_rho')
-#             self._parameters += [scale_factor_rho]
-#             self._parameters_names += [('scale_factor_rho', scale_factor_rho)]
-#             scale_factor = T.nnet.softplus(scale_factor_rho)
-#             print 'Debug QUINARY weights: scale_factor.eval()', scale_factor.eval()
-  
         if parameterization == 'shayer':
             W_rhoA = theano.shared(W_rhoA_values, borrow=True)
             W_rhoB = theano.shared(W_rhoB_values, borrow=True)
@@ -1407,296 +1195,6 @@ class LayerLinearForward(Layer):
             raise NotImplementedError('Regularizer \'%s\' not implemented' % regularizer)
               
         return W_mean, W_var, W_map, W_sample, W_sample_reparam, cost_regularizer
-
-    ############################################################################
-
-#     def _addQuinaryShayerDistribution(self, shape, initial_parameters, regularizer, regularizer_weight, regularizer_parameters, enable_scale_factors, rng, srng):
-#         if self.isOutputFeatureMap():
-#             print 'Warning: We did not check convolutions for _addQuinaryShayerDistribution'
-#   
-#         # prior_param determines the prior probability p(w=0). We have p(w=1)=p(w=-1)=(1-p(w=0))*0.5
-#         is_bias = len(shape) == 1
-#         param_name = 'b' if is_bias else 'W'
-#         param_name_rhoA = '%s_rhoA' % (param_name)
-#         param_name_rhoB = '%s_rhoB' % (param_name)
-#         param_name_rhoC = '%s_rhoC' % (param_name)
-#         param_name_rhoD = '%s_rhoD' % (param_name)
-#   
-#         if initial_parameters is None or param_name in initial_parameters:
-#             # New method (Shayer method buts too little probability onto
-#             # the weights {-0.5, +0.5} so that they do not get assigned by the
-#             # MAP selection procedure.
-#             p_init_min = 0.05
-#             p_init_max = 1. - p_init_min
-#             slope = (p_init_max - p_init_min / 4.) / 0.5;
-#                   
-#             if initial_parameters is not None:
-#                 if param_name_rhoA in initial_parameters:
-#                     raise Exception('Initial parameters contain \'%s\' and \'%s\'. Do not know which initial parameters to use'
-#                                     % (param_name_rhoA, param_name))
-#                 if param_name_rhoB in initial_parameters:
-#                     raise Exception('Initial parameters contain \'%s\' and \'%s\'. Do not know which initial parameters to use'
-#                                     % (param_name_rhoB, param_name))
-#                 W_values = LayerLinearForward._assignParameters(initial_parameters, param_name, shape)
-#                 W_values = W_values / np.std(W_values)
-#             else:
-#                 W_values = rng.normal(size=shape)
-# 
-#             # Compute probabilities for -1
-#             idx0 = W_values <= -1
-#             idx1 = W_values > -0.5
-#             idx2 = np.logical_and(W_values > -1, W_values <= -0.5)
-#             p_m1_values = np.zeros(W_values.shape)
-#             p_m1_values[idx0] = p_init_max
-#             p_m1_values[idx1] = p_init_min / 4.
-#             p_m1_values[idx2] = p_init_max - slope * (W_values[idx2] + 1.)
-#             
-#             # Compute probabilities for -0.5
-#             idx0 = np.logical_or(W_values <= -1, W_values > 0.)
-#             idx1 = np.logical_and(W_values > -1, W_values <= -0.5)
-#             idx2 = np.logical_and(W_values > -0.5, W_values <= 0.)
-#             p_m05_values = np.zeros(W_values.shape)
-#             p_m05_values[idx0] = p_init_min / 4.
-#             p_m05_values[idx1] = p_init_min / 4. + slope * (W_values[idx1] + 1.)
-#             p_m05_values[idx2] = p_init_max - slope * (W_values[idx2] + 0.5)
-#             
-#             # Compute probabilities for 0
-#             idx0 = np.logical_or(W_values <= -0.5, W_values > 0.5)
-#             idx1 = np.logical_and(W_values > -0.5, W_values <= 0)
-#             idx2 = np.logical_and(W_values > 0., W_values <= 0.5)
-#             p_zr_values = np.zeros(W_values.shape)
-#             p_zr_values[idx0] = p_init_min / 4.
-#             p_zr_values[idx1] = p_init_min / 4. + slope * (W_values[idx1] + 0.5)
-#             p_zr_values[idx2] = p_init_max - slope * W_values[idx2]
-#             
-#             # Compute probabilities for 0.5
-#             idx0 = np.logical_or(W_values <= 0., W_values > 1.)
-#             idx1 = np.logical_and(W_values > 0., W_values <= 0.5)
-#             idx2 = np.logical_and(W_values > 0.5, W_values <= 1.)
-#             p_p05_values = np.zeros(W_values.shape)
-#             p_p05_values[idx0] = p_init_min / 4.
-#             p_p05_values[idx1] = p_init_min / 4. + slope * W_values[idx1]
-#             p_p05_values[idx2] = p_init_max - slope * (W_values[idx2] - 0.5)
-#             
-#             # Compute probabilities for 1.
-#             idx0 = W_values > 1.
-#             idx1 = W_values <= 0.5
-#             idx2 = np.logical_and(W_values > 0.5, W_values <= 1.)
-#             p_p1_values = np.zeros(W_values.shape)
-#             p_p1_values[idx0] = p_init_max
-#             p_p1_values[idx1] = p_init_min / 4.
-#             p_p1_values[idx2] = p_init_min / 4. + slope * (W_values[idx2] - 0.5)
-#             
-#             pA_values = p_zr_values
-#             pB_values = (p_p1_values + p_p05_values) / (1. - p_zr_values)
-#             pC_values = p_p1_values / (1 - p_zr_values) / pB_values
-#             pD_values = p_m1_values / (1 - p_zr_values) / (1. - pB_values)
-#             
-#             debug_stack = np.stack([p_m1_values, p_m05_values, p_zr_values, p_p05_values, p_p1_values], axis=-1)
-#             debug_stack = np.sum(debug_stack, axis=-1)
-#             print 'Debug: Maximum probability discrepancy:', np.max(np.abs(debug_stack - 1))
-#             
-# #             # Method based on expectation, motivated by Shayer2018
-# #             p_init_min, p_init_max = 0.05, 0.95
-# #                  
-# #             if initial_parameters is not None:
-# #                 if param_name_rhoA in initial_parameters:
-# #                     raise Exception('Initial parameters contain \'%s\' and \'%s\'. Do not know which initial parameters to use'
-# #                                     % (param_name_rhoA, param_name))
-# #                 if param_name_rhoB in initial_parameters:
-# #                     raise Exception('Initial parameters contain \'%s\' and \'%s\'. Do not know which initial parameters to use'
-# #                                     % (param_name_rhoB, param_name))
-# #                 W_values = LayerLinearForward._assignParameters(initial_parameters, param_name, shape)
-# #                 W_values = W_values / np.std(W_values)
-# #             else:
-# #                 W_values = rng.normal(size=shape)
-# #
-# #             pA_values = p_init_max - (p_init_max - p_init_min) * np.abs(W_values)
-# #             pA_values = np.clip(pA_values, p_init_min, p_init_max)
-# #             
-# #             pB_values = 0.5 * (1. + W_values / (1 - pA_values) / 0.75)
-# #             pB_values = np.clip(pB_values, p_init_min, p_init_max)
-# #             
-# #             pC_values = np.full(pA_values.shape, 0.5)
-# #             pC_values_aux = (2. * W_values / (1. - pA_values) + (1. - pB_values) * 1.5) / pB_values - 1.
-# #             pC_values[pB_values == p_init_max] = pC_values_aux[pB_values == p_init_max]
-# #             pC_values = np.clip(pC_values, p_init_min, p_init_max)
-# #             
-# #             pD_values = np.full(pA_values.shape, 0.5)
-# #             pD_values_aux = (2. * W_values / (1. - pA_values) - pB_values * 1.5) / (pB_values - 1.) - 1.
-# #             pD_values[pB_values == p_init_min] = pD_values_aux[pB_values == p_init_min]
-# #             pD_values = np.clip(pD_values, p_init_min, p_init_max)
-# 
-#             W_rhoA_values = np.asarray(-np.log(1. / pA_values - 1.), dtype=theano.config.floatX)
-#             W_rhoB_values = np.asarray(-np.log(1. / pB_values - 1.), dtype=theano.config.floatX)
-#             W_rhoC_values = np.asarray(-np.log(1. / pC_values - 1.), dtype=theano.config.floatX)
-#             W_rhoD_values = np.asarray(-np.log(1. / pD_values - 1.), dtype=theano.config.floatX)
-#         else:
-#             W_rhoA_values = LayerLinearForward._assignParameters(initial_parameters, param_name_rhoA, shape)
-#             W_rhoB_values = LayerLinearForward._assignParameters(initial_parameters, param_name_rhoB, shape)
-#             W_rhoC_values = LayerLinearForward._assignParameters(initial_parameters, param_name_rhoC, shape)
-#             W_rhoD_values = LayerLinearForward._assignParameters(initial_parameters, param_name_rhoD, shape)
-# 
-#         if enable_scale_factors:
-#             if initial_parameters is not None and 'scale_factor' not in initial_parameters:
-#                 # TODO: Check if we can safely assume that the variables P{A,B,C,D}_values are defined at this point
-#                 scale_factor_rho_values = np.full((4,), np.log(np.exp(0.5) - 1.), theano.config.floatX)
-#                 p_m1 = (1. - pA_values) * (1. - pB_values) * pD_values
-#                 p_m05 = (1. - pA_values) * (1. - pB_values) * (1. - pD_values)
-#                 p_p05 = (1. - pA_values) * pB_values * (1. - pC_values)
-#                 p_p1 = (1. - pA_values) * pB_values * pC_values
-#                 
-# #                 pm = (1. - p0_values) * (1. - p1_values)
-#                 A = np.stack([-p_m1.flatten(), -p_m05.flatten(), p_p05.flatten(), p_p1.flatten()], axis=-1)
-#                 b = W_values.flatten()
-#                 print 'A.shape', A.shape
-#                 print 'b.shape', b.shape
-# 
-#                 opt_res = lsq_linear(A, b, (0.1, np.inf))
-#                 #opt_res = lsq_linear(A, b, ([0.55, 0.49, 0.49, 0.55], [np.inf, 0.51, 0.51, np.inf]))
-#                 print opt_res['message']
-#                 sf = opt_res['x'].astype(theano.config.floatX)
-#                 print 'Scale Factor initialization debug output:'
-#                 print sf
-#                 print np.sum((np.dot(A, np.asarray([1., 0.5, 0.5, 1])) - b) ** 2.)
-#                 print np.sum((np.dot(A, sf) - b) ** 2.)
-#                 print 'W_values percentiles:', [np.percentile(W_values, p) for p in [10,20,30,40,50,60,70,80,90]]
-#                 
-#                 # scale factor for smallest weight is computed as -sf[0] - sf[1]
-#                 sf[0] = sf[0] - sf[1]
-#                 # scale factor for largest weight is computed as sf[2] + sf[3]
-#                 sf[3] = sf[3] - sf[2]
-#                 scale_factor_rho_values = np.log(np.exp(sf) - 1.)
-#             elif initial_parameters is None or 'scale_factor' not in initial_parameters:
-# #                 # Use softplus^{-1}(1) as initial values
-#                 scale_factor_rho_values = np.full((4,), np.log(np.exp(0.5) - 1.), theano.config.floatX)
-#             else:
-#                 scale_factor_rho_values = LayerLinearForward._assignParameters(initial_parameters, 'scale_factor', (4,))
-#             scale_factor_rho = theano.shared(scale_factor_rho_values, 'scale_factor_rho')
-#             self._parameters += [scale_factor_rho]
-#             self._parameters_names += [('scale_factor_rho', scale_factor_rho)]
-#             scale_factor = T.nnet.softplus(scale_factor_rho)
-#             print 'debug: scale_factor.eval()', scale_factor.eval()
-#   
-#         W_rhoA = theano.shared(W_rhoA_values, borrow=True)
-#         W_rhoB = theano.shared(W_rhoB_values, borrow=True)
-#         W_rhoC = theano.shared(W_rhoC_values, borrow=True)
-#         W_rhoD = theano.shared(W_rhoD_values, borrow=True)
-#         self._parameters += [W_rhoA, W_rhoB,  W_rhoC, W_rhoD]
-#         self._parameters_names += [(param_name_rhoA, W_rhoA)]
-#         self._parameters_names += [(param_name_rhoB, W_rhoB)]
-#         self._parameters_names += [(param_name_rhoC, W_rhoC)]
-#         self._parameters_names += [(param_name_rhoD, W_rhoD)]
-#           
-#         W_rhoA_aux = T.nnet.sigmoid(W_rhoA)
-#         W_rhoA_aux_1m = 1. - W_rhoA_aux
-#         W_rhoB_aux = T.nnet.sigmoid(W_rhoB)
-#         W_rhoB_aux_1m = 1. - W_rhoB_aux
-#         W_rhoC_aux = T.nnet.sigmoid(W_rhoC)
-#         W_rhoC_aux_1m = 1. - W_rhoC_aux
-#         W_rhoD_aux = T.nnet.sigmoid(W_rhoD)
-#         W_rhoD_aux_1m = 1. - W_rhoD_aux
-#           
-#         W_p_0 = W_rhoA_aux
-#         W_p_p1 = W_rhoA_aux_1m * W_rhoB_aux * W_rhoC_aux
-#         W_p_p05 = W_rhoA_aux_1m * W_rhoB_aux * W_rhoC_aux_1m
-#         W_p_m1 = W_rhoA_aux_1m * W_rhoB_aux_1m * W_rhoD_aux
-#         W_p_m05 = W_rhoA_aux_1m * W_rhoB_aux_1m * W_rhoD_aux_1m
-#           
-#         W_p = T.stack([W_p_m1, W_p_m05, W_p_0, W_p_p05, W_p_p1], axis=-1) # This is already normalized
-#         
-#         debug = W_p.eval()
-#         debug = np.sum(debug, axis=-1)
-#         print 'Debug quinaryShayer: errs:', np.sum(np.abs(debug - 1) >= 1e-6)
-#   
-#         if enable_scale_factors:
-#             W_mean = -W_p_m1 * (scale_factor[0] + scale_factor[1]) \
-#                      -W_p_m05 * scale_factor[1] \
-#                    + W_p_p05 * scale_factor[2] \
-#                    + W_p_p1 * (scale_factor[2] + scale_factor[3])
-#             W_var = W_p_m1 * T.sqr(scale_factor[0] + scale_factor[1] + W_mean) \
-#                   + W_p_m05 * T.sqr(scale_factor[1] + W_mean) \
-#                   + W_p_0 * T.sqr(W_mean) \
-#                   + W_p_p05 * T.sqr(scale_factor[2] - W_mean) \
-#                   + W_p_p1 * T.sqr(scale_factor[2] + scale_factor[3] - W_mean)
-# 
-#             W_map_idx = T.argmax(W_p, axis=-1)            
-#             W_map = T.zeros(shape, theano.config.floatX)
-#             W_map = T.switch(T.eq(W_map_idx, 0), -scale_factor[0] - scale_factor[1], W_map)
-#             W_map = T.switch(T.eq(W_map_idx, 1),                  - scale_factor[1], W_map)
-#             W_map = T.switch(T.eq(W_map_idx, 3),                    scale_factor[2], W_map)
-#             W_map = T.switch(T.eq(W_map_idx, 4),  scale_factor[3] + scale_factor[2], W_map)
-# 
-#             W_sample_values = np.zeros(shape, dtype=theano.config.floatX)
-#             W_sample = theano.shared(W_sample_values, borrow=True)
-#             W_sample_cumsum = T.cumsum(W_p, axis=-1)
-#             W_epsilon = srng.uniform(shape + (1,), dtype=theano.config.floatX)
-#             W_resampled_idx = T.sum(T.cast(T.le(W_sample_cumsum, W_epsilon), 'int32'), axis=-1)
-#             W_resampled = T.zeros(shape, theano.config.floatX)
-#             W_resampled = T.switch(T.eq(W_resampled_idx, 0), -scale_factor[0] - scale_factor[1], W_map)
-#             W_resampled = T.switch(T.eq(W_resampled_idx, 1),                  - scale_factor[1], W_map)
-#             W_resampled = T.switch(T.eq(W_resampled_idx, 3),                    scale_factor[2], W_map)
-#             W_resampled = T.switch(T.eq(W_resampled_idx, 4),  scale_factor[3] + scale_factor[2], W_map)
-#             self._sampling_updates += [(W_sample, W_resampled)]
-#         else:
-#             W_mean = -W_p_m1 + W_p_p1 + 0.5 * (-W_p_m05 + W_p_p05)
-#             W_var = W_p_m1 * T.sqr(1. + W_mean) \
-#                   + W_p_m05 * T.sqr(0.5 + W_mean) \
-#                   + W_p_0 * T.sqr(W_mean) \
-#                   + W_p_p05 * T.sqr(0.5 - W_mean) \
-#                   + W_p_p1 * T.sqr(1 - W_mean)
-# 
-#             W_map = (T.cast(T.argmax(W_p, axis=-1), 'float32') - 2.) * 0.5
-#               
-#             W_sample_values = np.zeros(shape, dtype=theano.config.floatX)
-#             W_sample = theano.shared(W_sample_values, borrow=True)
-#             W_sample_cumsum = T.cumsum(W_p, axis=-1)
-#             W_epsilon = srng.uniform(shape + (1,), dtype=theano.config.floatX)
-#             W_resampled = (T.sum(T.cast(T.le(W_sample_cumsum, W_epsilon), theano.config.floatX), axis=-1) - 2.) * 0.5
-#             self._sampling_updates += [(W_sample, W_resampled)]
-#         print 'Warning: Sampling for distribution \'quinaryShayer\' was not tested'
-#           
-#         W_sample_reparam = None
-#         if self._enable_reparameterization_trick:
-#             # TODO: Implement Gumbel softmax approximation
-#             raise NotImplementedError('Reparameterization trick for quinaryShayer not implemented')
-#           
-#         if regularizer == 'shayer':
-#             assert regularizer_parameters is None
-#             assert regularizer_weight is not None
-#             cost_regularizer = (T.sum(T.sqr(W_rhoA)) + \
-#                                 T.sum(T.sqr(W_rhoB)) + \
-#                                 T.sum(T.sqr(W_rhoC)) + \
-#                                 T.sum(T.sqr(W_rhoD))) * regularizer_weight
-#         elif regularizer == 'kl':
-#             assert regularizer_parameters is not None
-#             assert regularizer_weight is not None
-#             assert len(regularizer_parameters) in [3,5]
-#             if len(regularizer_parameters) == 3:
-#                 prior_p = np.asarray([regularizer_parameters[2],
-#                                       regularizer_parameters[1],
-#                                       regularizer_parameters[0],
-#                                       regularizer_parameters[1],
-#                                       regularizer_parameters[2]], 'float64')
-#             elif len(regularizer_parameters) == 5:
-#                 prior_p = np.asarray([regularizer_parameters], 'float64')
-#             assert np.abs(np.sum(prior_p) - 1) <= 1e-6
-#             log_prior_p = np.log(prior_p).astype(theano.config.floatX)
-#             cost_regularizer = T.sum(W_p * (T.log(W_p) - log_prior_p)) * regularizer_weight
-#         elif regularizer == 'kl_gaussprior': # discretized gaussian prior
-#             assert regularizer_parameters is not None
-#             assert regularizer_weight is not None
-#             log_prior_p = -0.5 * np.asarray([-1, -0.5, 0., 0.5, 1.]) / regularizer_parameters
-#             log_prior_p = log_prior_p - T.max(log_prior_p)
-#             log_prior_p = log_prior_p - T.log(T.sum(T.exp(log_prior_p)))
-#             log_prior_p = log_prior_p.astype(theano.config.floatX)
-#             cost_regularizer = T.sum(W_p * (T.log(W_p) - log_prior_p)) * regularizer_weight
-#         elif regularizer is None:
-#             cost_regularizer = 0
-#         else:
-#             raise NotImplementedError('Regularizer \'%s\' not implemented' % regularizer)
-#               
-#         return W_mean, W_var, W_map, W_sample, W_sample_reparam, cost_regularizer
         
     @staticmethod
     def _assignParameters(params, param_name, shape):
@@ -1774,11 +1272,3 @@ class LayerLinearForward(Layer):
         ys /= ys[-1]
         f = interp1d(xs, ys, kind='linear')
         return f(w)
-        
-        # The following code was used for the experiments in the ECML 2019 submission and for
-        # the IEEE JSTSP 2019 submission. It produces NaNs if the two smalles elements of w are
-        # equal. For reproducability, we keep them temporarily here as comments.
-        #xs = np.sort(w.flatten())
-        #ys = np.arange(1, len(xs)+1)/float(len(xs))
-        #f = interp1d(xs, ys, kind='linear')
-        #return f(w)

@@ -1,5 +1,5 @@
 '''
-Fully-connected weight layer.
+Performs dropout with Bernoulli noise.
 '''
 
 from abc import abstractmethod

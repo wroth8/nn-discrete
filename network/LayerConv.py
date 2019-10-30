@@ -1,5 +1,5 @@
 '''
-Fully-connected weight layer.
+Convolutional layer.
 '''
 
 from Layer import Layer

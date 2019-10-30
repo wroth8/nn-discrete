@@ -1,5 +1,5 @@
 '''
-Fully-connected weight layer.
+Computes the tanh activation function.
 '''
 
 from abc import abstractmethod

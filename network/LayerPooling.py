@@ -1,5 +1,5 @@
 '''
-Fully-connected weight layer.
+Pooling layer (max, sum, and average-pooling).
 '''
 
 from Layer import Layer

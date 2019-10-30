@@ -1,5 +1,5 @@
 '''
-Fully-connected weight layer.
+Performs batch normalization.
 '''
 
 from Layer import Layer

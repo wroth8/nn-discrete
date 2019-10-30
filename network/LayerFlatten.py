@@ -1,5 +1,5 @@
 '''
-Flatten-layer that flattens a convolutional layer to a fully-connected layer.
+Flattens a convolutional layer for the transition to a fully-connected layer.
 '''
 
 from Layer import Layer

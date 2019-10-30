@@ -1,5 +1,5 @@
 '''
-Fully-connected weight layer.
+Computes the sign activation function.
 '''
 
 from Layer import Layer
