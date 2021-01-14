@@ -1,5 +1,7 @@
 # Discrete-valued neural networks using weight distributions
 
+**Important: There exists a _newer_ repository containing _TensorFlow_ code under [https://github.com/wroth8/nn-discrete-tf](https://github.com/wroth8/nn-discrete-tf)**
+
 This repository contains python code using Theano to reproduce the experiments from our paper
 
 ```
